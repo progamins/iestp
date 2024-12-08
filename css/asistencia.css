@@ -1,0 +1,35 @@
+ /* Estilos personalizados para la tabla */
+ .container2 {
+    background-color: #f8f9fa;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+h2 {
+    font-family: 'Arial', sans-serif;
+    font-weight: bold;
+    color: #343a40;
+    margin-bottom: 30px;
+}
+table.table {
+    margin-top: 20px;
+}
+.table th {
+    background-color: #2a7bcc;
+    color: #fff;
+}
+.table th, .table td {
+    text-align: center;
+    vertical-align: middle;
+}
+.btn-info {
+    background-color: #17a2b8;
+    border: none;
+}
+.btn-danger {
+    background-color: #dc3545;
+    border: none;
+}
+.btn-info:hover, .btn-danger:hover {
+    opacity: 0.8;
+}

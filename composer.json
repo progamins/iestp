@@ -1,0 +1,20 @@
+{
+    "name": "edwin_rosas/hola",
+    "description": "sistema del aplicativo",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "edwin rosas",
+            "email": "edwinraulrosasalbines@gmail.com"
+        }
+    ],
+    "minimum-stability": "beta",
+    "require": {
+        "phpoffice/phpspreadsheet": "^2.2",
+        "endroid/qr-code": "^5.0",
+        "smalot/pdfparser": "^2.11",
+        "setasign/fpdi": "^2.6",
+        "spatie/pdf-to-text": "^1.53"
+    }
+}

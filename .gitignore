@@ -1,0 +1,9 @@
+﻿/vendor/
+.env
+.vs/
+*.log
+/uploads/
+ngrok.exe
+composer.phar
+.git/
+temp/

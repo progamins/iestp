@@ -1,0 +1,13 @@
+# Colocar este archivo .htaccess en el directorio imagenesJ/
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+</IfModule>
+
+Options +FollowSymLinks
+RewriteEngine On
+
+# Permitir acceso directo a las imágenes
+<FilesMatch "\.(jpg|jpeg|png|gif)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
