@@ -22,13 +22,6 @@
         "ext-gd": "*",
         "ext-mbstring": "*"
     },
-    "scripts": {
-        "post-install-cmd": [
-            "chmod -R 777 storage",
-            "chmod -R 777 public/uploads",
-            "php -r \"file_exists('.env') || copy('.env.example', '.env');\""
-        ]
-    },
     "config": {
         "optimize-autoloader": true,
         "preferred-install": "dist",
