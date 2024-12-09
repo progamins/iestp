@@ -13,18 +13,8 @@ if ($_SESSION['role'] !== 'Administrador') {
     exit();
 }
 
-// Conexión a la base de datos
-$serverName = "EDWIN\SQLEXPRESS";
-$database = "aplicativo";
-$user = "sa";
-$pass = "EDWINROSAS";
+include 'db_connect.php'; // Asegúrate de que este archivo realiza correctamente la conexión a la base de datos
 
-try {
-    $conn = new PDO("sqlsrv:server=$serverName;Database=$database", $user, $pass);
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) {
-    die("Error en la conexión: " . $e->getMessage());
-}
 
 // Función para limpiar entradas
 function limpiarEntrada($datos) {
@@ -153,7 +143,6 @@ $sql = "SELECT
    <link rel="stylesheet" href="css/responsive.css">
    <link rel="stylesheet" href="css/owl.carousel.min.css">
    <!-- fevicon -->
-   <link rel="icon" href="images/fevicon.png" type="image/gif" />
    <!-- Scrollbar Custom CSS -->
    <link rel="stylesheet" href="css/jquery.mCustomScrollbar.min.css">
    <!-- Tweaks for older IEs-->

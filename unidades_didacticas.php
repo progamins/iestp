@@ -194,8 +194,7 @@ $unidades = obtenerUnidadesDidacticas($conn);
     <!-- Responsive-->
     <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="css/owl.carousel.min.css">
-    <!-- fevicon -->
-    <link rel="icon" href="images/fevicon.png" type="image/gif" />
+
     <!-- Scrollbar Custom CSS -->
     <link rel="stylesheet" href="css/jquery.mCustomScrollbar.min.css">
     <!-- Tweaks for older IEs-->
