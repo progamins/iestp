@@ -1,13 +1,24 @@
-# Colocar este archivo .htaccess en el directorio imagenesJ/
+# Ubicación: C:\laragon\www\iestp\public\imagenesJ\.htaccess
+
+# Configuración de encabezados CORS
 <IfModule mod_headers.c>
     Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, OPTIONS"
+    Header set Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept"
 </IfModule>
 
+# Habilitar el motor de reescritura
 Options +FollowSymLinks
 RewriteEngine On
 
-# Permitir acceso directo a las imágenes
-<FilesMatch "\.(jpg|jpeg|png|gif)$">
+# Permitir acceso a imágenes
+<FilesMatch "\.(jpg|jpeg|png|gif|pdf)$">
     Order Allow,Deny
     Allow from all
+    Satisfy Any
+    
+    # Cache del navegador
+    <IfModule mod_headers.c>
+        Header set Cache-Control "max-age=604800, public"
+    </IfModule>
 </FilesMatch>

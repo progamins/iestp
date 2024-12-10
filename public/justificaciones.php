@@ -724,74 +724,98 @@ $sql = "SELECT
                     });
                 }
             }
+// Función para cargar imágenes
+async function cargarImagenes(justificacionId) {
+    const gallery = document.getElementById('gallery');
+    if (!gallery) return;
 
-            // Función separada para cargar imágenes
-            async function cargarImagenes(justificacionId) {
-                const gallery = document.getElementById('gallery');
-                if (!gallery) return;
+    gallery.innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+        </div>`;
 
-                gallery.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div></div>';
+    try {
+        // Ajustando la ruta al controlador
+        const response = await fetch(`/iestp/app/controllers/get_images.php?justificacion_id=${justificacionId}`);
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+        }
 
-                try {
-                    const response = await fetch(`/../../controllers/get_images.php?justificacion_id=${justificacionId}`);
-                    if (!response.ok) {
-                        throw new Error(`Error HTTP: ${response.status}`);
-                    }
+        const data = await response.json();
+        gallery.innerHTML = ''; // Limpiar spinner
 
-                    const imagenes = await response.json();
-                    gallery.innerHTML = ''; // Limpiar el spinner
+        if (data.error) {
+            throw new Error(data.error);
+        }
 
-                    if (imagenes && imagenes.length > 0) {
-                        imagenes.forEach(imagen => {
-                            if (!imagen.RutaArchivo) return;
+        const imagenes = Array.isArray(data.data) ? data.data : data;
 
-                            const imgContainer = document.createElement('div');
-                            imgContainer.className = 'position-relative m-2';
+        if (imagenes && imagenes.length > 0) {
+            imagenes.forEach(imagen => {
+                if (!imagen.RutaArchivo) return;
 
-                            const img = document.createElement('img');
-                            img.src = imagen.RutaArchivo;
-                            img.alt = 'Documento de justificación';
-                            img.className = 'gallery-img img-thumbnail';
-                            img.style.maxHeight = '150px';
+                const imgContainer = document.createElement('div');
+                imgContainer.className = 'position-relative m-2';
 
-                            img.onerror = function() {
-                                this.onerror = null;
-                                this.src = 'assets/img/imagen-no-disponible.jpg';
-                                console.error('Error al cargar la imagen:', imagen.RutaArchivo);
-                            };
+                const img = document.createElement('img');
+                // Asegurarnos de que la ruta comience con /iestp/
+                img.src = imagen.RutaArchivo.startsWith('/') 
+                    ? `/iestp${imagen.RutaArchivo}` 
+                    : `/iestp/${imagen.RutaArchivo}`;
+                img.alt = 'Documento de justificación';
+                img.className = 'gallery-img img-thumbnail';
+                img.style.maxHeight = '150px';
 
-                            img.onclick = () => mostrarImagen(imagen.RutaArchivo);
+                img.onerror = function() {
+                    this.onerror = null;
+                    this.src = '/iestp/assets/img/imagen-no-disponible.jpg';
+                    console.error('Error al cargar la imagen:', imagen.RutaArchivo);
+                };
 
-                            imgContainer.appendChild(img);
-                            gallery.appendChild(imgContainer);
-                        });
-                    } else {
-                        gallery.innerHTML = '<p class="text-muted">No hay documentos adjuntos</p>';
-                    }
-                } catch (error) {
-                    console.error('Error al cargar las imágenes:', error);
-                    gallery.innerHTML = `<p class="text-danger">Error al cargar las imágenes: ${error.message}</p>`;
-                }
-            }
+                img.onclick = () => mostrarImagen(img.src);
 
-            // Función para mostrar imagen en modal
-            function mostrarImagen(rutaImagen) {
-                if (!rutaImagen) {
-                    console.error('Ruta de imagen no válida');
-                    return;
-                }
+                imgContainer.appendChild(img);
+                gallery.appendChild(imgContainer);
+            });
+        } else {
+            gallery.innerHTML = '<p class="text-muted">No hay documentos adjuntos</p>';
+        }
+    } catch (error) {
+        console.error('Error al cargar las imágenes:', error);
+        gallery.innerHTML = `
+            <div class="alert alert-danger">
+                Error al cargar las imágenes: ${error.message}
+                <button onclick="cargarImagenes(${justificacionId})" class="btn btn-sm btn-danger ms-2">
+                    Reintentar
+                </button>
+            </div>`;
+    }
+}
 
-                const modalImage = document.getElementById('modalImage');
-                if (modalImage && imageModal) {
-                    modalImage.onerror = function() {
-                        this.onerror = null;
-                        this.src = 'assets/img/imagen-no-disponible.jpg';
-                    };
-                    modalImage.src = rutaImagen;
-                    imageModal.show();
-                }
-            }
+// Función para mostrar imagen en modal
+function mostrarImagen(rutaImagen) {
+    if (!rutaImagen) {
+        console.error('Ruta de imagen no válida');
+        return;
+    }
 
+    const modalImage = document.getElementById('modalImage');
+    if (!modalImage || !imageModal) {
+        console.error('Elementos del modal no encontrados');
+        return;
+    }
+
+    modalImage.onerror = function() {
+        this.onerror = null;
+        this.src = '/iestp/assets/img/imagen-no-disponible.jpg';
+    };
+    modalImage.src = rutaImagen;
+    imageModal.show();
+}
             // Función para resolver justificación
             function resolverJustificacion(accion) {
                 const motivo = document.getElementById('motivo_resolucion')?.value.trim();
