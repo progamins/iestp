@@ -44,46 +44,46 @@ if ($result) {
 ?>
 
 <script>
-    $(document).ready(function () {
-    $(document).on('click', '.toggle-password', function () {
-        var passwordField = $(this).siblings('.password-field');
-        var realPassword = $(this).siblings('.real-password');
-        var eyeIcon = $(this);
+    $(document).ready(function() {
+        $(document).on('click', '.toggle-password', function() {
+            var passwordField = $(this).siblings('.password-field');
+            var realPassword = $(this).siblings('.real-password');
+            var eyeIcon = $(this);
 
-        // Desactivar el botón durante la animación
-        eyeIcon.prop('disabled', true);
+            // Desactivar el botón durante la animación
+            eyeIcon.prop('disabled', true);
 
-        if (passwordField.is(":visible")) {
-            // Ocultar contraseña
-            passwordField.fadeOut(200, function () {
-                realPassword.fadeIn(200, function() {
-                    eyeIcon.prop('disabled', false);
+            if (passwordField.is(":visible")) {
+                // Ocultar contraseña
+                passwordField.fadeOut(200, function() {
+                    realPassword.fadeIn(200, function() {
+                        eyeIcon.prop('disabled', false);
+                    });
                 });
-            });
 
-            eyeIcon.addClass('rotate-eye');
-            setTimeout(function() {
-                eyeIcon.attr({
-                    'src': 'images/ver_contraseña.png',
-                    'alt': 'Ocultar contraseña'
-                }).removeClass('rotate-eye');
-            }, 150);
-        } else {
-            // Mostrar contraseña
-            realPassword.fadeOut(200, function () {
-                passwordField.fadeIn(200, function() {
-                    eyeIcon.prop('disabled', false);
+                eyeIcon.addClass('rotate-eye');
+                setTimeout(function() {
+                    eyeIcon.attr({
+                        'src': 'images/ver_contraseña.png',
+                        'alt': 'Ocultar contraseña'
+                    }).removeClass('rotate-eye');
+                }, 150);
+            } else {
+                // Mostrar contraseña
+                realPassword.fadeOut(200, function() {
+                    passwordField.fadeIn(200, function() {
+                        eyeIcon.prop('disabled', false);
+                    });
                 });
-            });
 
-            eyeIcon.addClass('rotate-eye-reverse');
-            setTimeout(function() {
-                eyeIcon.attr({
-                    'src': 'images/dejar_de_ver_contraseña.png',
-                    'alt': 'Ver contraseña'
-                }).removeClass('rotate-eye-reverse');
-            }, 150);
-        }
+                eyeIcon.addClass('rotate-eye-reverse');
+                setTimeout(function() {
+                    eyeIcon.attr({
+                        'src': 'images/dejar_de_ver_contraseña.png',
+                        'alt': 'Ver contraseña'
+                    }).removeClass('rotate-eye-reverse');
+                }, 150);
+            }
+        });
     });
-});
 </script>

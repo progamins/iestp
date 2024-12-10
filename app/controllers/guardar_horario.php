@@ -1,7 +1,7 @@
 <?php
 ob_start();
 session_start();
-include 'db_connect.php';
+require_once __DIR__ . '/../config/db_connect.php';
 
 // Verificación de autenticación
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['email']) || !isset($_SESSION['role'])) {
@@ -19,7 +19,7 @@ if ($_SESSION['role'] !== 'Administrador') {
 if (isset($_POST['guardar_horario'])) {
     if (empty($_FILES['archivo']['name'])) {
         $_SESSION['error_message'] = "No se seleccionó ningún archivo.";
-        header("Location: subir_horario.php");
+        header("Location:");
         exit();
     }
 
@@ -33,12 +33,12 @@ if (isset($_POST['guardar_horario'])) {
     
     if (!in_array($file_extension, $allowed_extensions)) {
         $_SESSION['error_message'] = "Formato de archivo no permitido. Solo se permiten archivos .jpg, .jpeg, .pdf.";
-        header("Location: subir_horario.php");
+        header("Location: /iestp/public/subir_horario.php");
         exit();
     }
 
     // Crear directorio si no existe
-    $upload_dir = 'uploads/';
+    $upload_dir = '../../../public/uploads/';
     if (!file_exists($upload_dir)) {
         mkdir($upload_dir, 0777, true);
     }
@@ -85,7 +85,7 @@ if (isset($_POST['guardar_horario'])) {
         $_SESSION['error_message'] = "Error: " . $e->getMessage();
     }
 
-    header("Location: subir_horario.php");
+    header("Location: /iestp/public/subir_horario.php");
     exit();
 }
 

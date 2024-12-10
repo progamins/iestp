@@ -13,8 +13,7 @@ if ($_SESSION['role'] !== 'Administrador') {
     exit();
 }
 
-include '../app/config/db_connect.php'; // Asegúrate de que este archivo realiza correctamente la conexión a la base de datos
-
+include '../app/config/db_connect.php';
 
 // Función para limpiar entradas
 function limpiarEntrada($datos)
@@ -29,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 
         try {
             // Primero eliminamos las imágenes asociadas
-            $sql_delete_images = "DELETE FROM Jimg WHERE JustificacionID = ?";
+            $sql_delete_images = "DELETE FROM jimg WHERE JustificacionID = ?";
             $stmt = $conn->prepare($sql_delete_images);
             $stmt->execute([$justificacion_id]);
 
@@ -45,6 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         }
     }
 }
+
 // Procesar acciones de aceptar/rechazar
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['action']) && isset($_POST['justificacion_id'])) {
@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $sql = "UPDATE justificaciones SET 
                     Estado = ?, 
                     MotivoResolucion = ?,
-                    FechaRevision = GETDATE(),
+                    FechaRevision = NOW(),
                     RevisorID = ?
                     WHERE JustificacionID = ?";
 
@@ -114,13 +114,12 @@ $sql = "SELECT
             j.Fecha_Fin,
             j.MotivoResolucion,
             j.FechaRevision,
-            (SELECT COUNT(*) FROM Jimg WHERE JustificacionID = j.JustificacionID) as cantidad_imagenes
+            (SELECT COUNT(*) FROM jimg WHERE JustificacionID = j.JustificacionID) as cantidad_imagenes
         FROM justificaciones j
         LEFT JOIN estudiantes e ON j.dni_estudiante = e.dni
         LEFT JOIN tipos_justificacion tj ON j.TipoJustificacionID = tj.TipoJustificacionID
         $where
         ORDER BY j.Fecha_Justificacion DESC";
-
 ?>
 
 <!DOCTYPE html>
@@ -734,7 +733,7 @@ $sql = "SELECT
                 gallery.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div></div>';
 
                 try {
-                    const response = await fetch(`get_images.php?justificacion_id=${justificacionId}`);
+                    const response = await fetch(`/../../controllers/get_images.php?justificacion_id=${justificacionId}`);
                     if (!response.ok) {
                         throw new Error(`Error HTTP: ${response.status}`);
                     }

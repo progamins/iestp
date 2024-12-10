@@ -2,7 +2,7 @@
 header('Content-Type: application/json');
 
 try {
-    include 'db_connect.php';
+    require_once __DIR__ . '/../config/db_connect.php';
     
     // Obtener el horario actual basado en la fecha y hora
     $stmt = $conn->prepare("

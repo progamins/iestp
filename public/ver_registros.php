@@ -186,8 +186,8 @@ $result = $conn->query($sql);
 
          <!-- Botones para generar reportes -->
          <div class="mb-3">
-            <a href="reporte.php" class="btn btn-primary">Generar Reporte PDF</a>
-            <a href="reporte_excel.php" class="btn btn-success">Generar Reporte Excel</a>
+            <a href="../app/controllers/generar_reporte.php" class="btn btn-primary">Generar Reporte PDF</a>
+            <a href="../app/controllers/reporte_excel.php" class="btn btn-success">Generar Reporte Excel</a>
             <!-- Cambié el nombre a 'reporte_excel.php' -->
          </div>
 
@@ -347,7 +347,7 @@ $result = $conn->query($sql);
     $('#saveChanges').click(function() {
         var formData = $('#editForm').serialize();
         $.ajax({
-            url: 'update_estudiante.php',
+            url: '../app/controllers/update_estudiante.php',
             type: 'POST',
             data: formData,
             success: function(response) {

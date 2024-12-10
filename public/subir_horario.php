@@ -204,7 +204,7 @@ try {
                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                   </div>
                   <div class="modal-body">
-                     <form action="guardar_horario.php" method="POST" enctype="multipart/form-data">
+                     <form action="../app/controllers/guardar_horario.php" method="POST" enctype="multipart/form-data">
                         <div class="mb-3">
                            <label for="programa_id" class="form-label">Nombre del Programa de Estudio</label>
                            <select class="form-control" id="programa_id" name="programa_id" required>
@@ -257,7 +257,7 @@ try {
                   } else {
                      echo "<span>No disponible</span> ";
                   }
-                  echo "<a href='eliminar_horario.php?id=" . $row['horario_id'] . "' class='btn btn-sm btn-danger'>Eliminar</a>";
+                  echo "<a href='../app/controllers/eliminar_horario.php?id=" . $row['horario_id'] . "' class='btn btn-sm btn-danger'>Eliminar</a>";
                   echo "</td>";
                   echo "</tr>";
                }
