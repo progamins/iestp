@@ -1,0 +1,11 @@
+# railway.toml
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "php -S 0.0.0.0:$PORT -t public"
+healthcheckPath = "/"
+healthcheckTimeout = 100
+
+[phases.setup]
+aptPkgs = ["php8.1", "php8.1-common", "php8.1-fpm", "apache2", "libapache2-mod-php8.1"]
