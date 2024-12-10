@@ -1,7 +1,17 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
+    
+    # Si el archivo o directorio no existe físicamente
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
+    
+    # Si no está ya en login.php
+    RewriteCond %{REQUEST_URI} !^/login\.php$
+    
+    # Redirigir a login.php
     RewriteRule ^(.*)$ login.php [L]
+    
+    # Permitir acceso a recursos estáticos (CSS, JS, imágenes)
+    RewriteCond %{REQUEST_URI} !\.(css|js|jpg|jpeg|png|gif|ico|svg)$ [NC]
 </IfModule>
