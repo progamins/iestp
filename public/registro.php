@@ -1,187 +1,269 @@
 <?php
 ob_start();
-
 session_start();
 
+// Validación de sesión
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['email']) || !isset($_SESSION['role'])) {
     header('Location: login.php');
     exit();
 }
 
+// Validación de rol
 if ($_SESSION['role'] !== 'Administrador') {
     header('Location: acceso_denegado.php');
     exit();
 }
 
-include '../app/config/db_connect.php';
-include 'lib/phpqrcode/qrlib.php';
+require '../app/config/db_connect.php';
+require 'lib/phpqrcode/qrlib.php';
+require '../vendor/autoload.php';
 
+use PhpOffice\PhpSpreadsheet\IOFactory;
+
+// Configuración de errores
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-require '../vendor/autoload.php';
-use PhpOffice\PhpSpreadsheet\IOFactory;
-
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $target_dir = "uploads/";
-    $target_file = $target_dir . basename($_FILES["file"]["name"]);
-    $fileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
-
-    if ($fileType != 'xlsx') {
-        echo "Solo se permiten archivos .xlsx.";
-        exit();
-    }
-
-    move_uploaded_file($_FILES["file"]["tmp_name"], $target_file);
+function validarDatosEstudiante($row) {
+    $errores = [];
     
-    // Iniciar transacción
-    $conn->beginTransaction();
+    // Validaciones básicas
+    if (!is_numeric($row[0])) $errores[] = "El número de estudiante debe ser numérico";
+    if (empty($row[1])) $errores[] = "El nombre es obligatorio";
+    if (empty($row[2]) || strlen($row[2]) !== 8 || !is_numeric($row[2])) {
+        $errores[] = "DNI inválido - debe tener 8 dígitos";
+    }
+    if (!empty($row[4]) && !preg_match('/^[0-9]{9}$/', $row[4])) {
+        $errores[] = "Formato de celular inválido";
+    }
+    if (!empty($row[5]) && !filter_var($row[5], FILTER_VALIDATE_EMAIL)) {
+        $errores[] = "Formato de email inválido";
+    }
+    
+    return $errores;
+}
+
+function formatearFechaIngreso($fecha) {
+    if (empty($fecha)) return null;
     
     try {
+        return DateTime::createFromFormat('m/d/Y', $fecha)->format('Y-m-d');
+    } catch (Exception $e) {
+        throw new Exception("Formato de fecha inválido: $fecha");
+    }
+}
+
+function generarCredenciales($nombre, $dni) {
+    $nombre_partes = explode(' ', trim($nombre));
+    $primer_apellido = end($nombre_partes);
+    $primer_nombre = $nombre_partes[0];
+    
+    return [
+        'usuario' => strtolower($primer_apellido . '_' . $primer_nombre),
+        'clave' => $dni . strtoupper($primer_apellido)
+    ];
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    try {
+        // Validación del archivo
+        if (!isset($_FILES["file"])) {
+            throw new Exception("No se ha subido ningún archivo");
+        }
+
+        $target_dir = "uploads/";
+        $target_file = $target_dir . basename($_FILES["file"]["name"]);
+        $fileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
+
+        if ($fileType !== 'xlsx') {
+            throw new Exception("Solo se permiten archivos .xlsx");
+        }
+
+        if (!move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+            throw new Exception("Error al subir el archivo");
+        }
+
+        // Iniciar transacción
+        $conn->beginTransaction();
+
         $spreadsheet = IOFactory::load($target_file);
         $sheet = $spreadsheet->getActiveSheet();
         $rows = $sheet->toArray();
-        array_shift($rows); // Saltar encabezado
+        array_shift($rows); // Eliminar encabezado
 
-        $registros_actualizados = 0;
-        $registros_nuevos = 0;
+        $stats = [
+            'nuevos' => 0,
+            'actualizados' => 0,
+            'errores' => 0,
+            'log' => []
+        ];
 
-        foreach ($rows as $row) {
-            $numero = $row[0];
-            $nombre = $row[1];
-            $dni = $row[2];
-            $anio_ingreso = $row[3];
-            $celular = $row[4];
-            $email = $row[5];
-            $email_corporativo = $row[6];
-            $ie_procedencia = $row[7];
-            $direccion = $row[8];
-            $distrito = $row[9];
-            $trabaja = $row[10];
-            $dependiente = $row[11];
-            $apoderado = $row[12];
-            $celular_apoderado = $row[13];
-            $programa = $row[14];
-
-            if (!is_numeric($numero) || empty($dni)) {
-                continue;
-            }
-
-            // Convertir fecha
-            $anio_ingreso_formato = null;
-            if ($anio_ingreso) {
-                try {
-                    $anio_ingreso_formato = DateTime::createFromFormat('m/d/Y', $anio_ingreso)->format('Y-m-d');
-                } catch (Exception $e) {
-                    continue;
+        foreach ($rows as $index => $row) {
+            try {
+                // Validar datos
+                $errores = validarDatosEstudiante($row);
+                if (!empty($errores)) {
+                    throw new Exception("Errores en la fila " . ($index + 2) . ": " . implode(", ", $errores));
                 }
-            }
 
-            // Generar usuario y clave
-            $nombre_partes = explode(' ', $nombre);
-            $primer_apellido = $nombre_partes[count($nombre_partes) - 1];
-            $primer_nombre = $nombre_partes[0];
-            $usuario = strtolower($primer_apellido . '_' . $primer_nombre);
-            $clave = $dni . $primer_apellido;
+                $numero = $row[0];
+                $nombre = $row[1];
+                $dni = $row[2];
+                $anio_ingreso = formatearFechaIngreso($row[3]);
+                $celular = $row[4];
+                $email = $row[5];
+                $email_corporativo = $row[6];
+                $ie_procedencia = $row[7];
+                $direccion = $row[8];
+                $distrito = $row[9];
+                $trabaja = $row[10];
+                $dependiente = $row[11];
+                $apoderado = $row[12];
+                $celular_apoderado = $row[13];
+                $programa = $row[14];
 
-            // Verificar si el estudiante ya existe
-            $stmt_check = $conn->prepare("SELECT id FROM estudiantes WHERE dni = ?");
-            $stmt_check->execute([$dni]);
-            $estudiante_existente = $stmt_check->fetch(PDO::FETCH_ASSOC);
+                // Verificar si existe el programa
+                $stmt_programa = $conn->prepare("SELECT programa_id FROM programas_estudio WHERE nombre_programa = ?");
+                $stmt_programa->execute([$programa]);
+                $programa_id = $stmt_programa->fetchColumn();
 
-            if ($estudiante_existente) {
-                // Actualizar estudiante existente
-                $stmt = $conn->prepare("
-                    UPDATE estudiantes 
-                    SET numero = ?, nombre = ?, anio_ingreso = ?, celular = ?, 
-                        email = ?, email_corporativo = ?, ie_procedencia = ?, 
-                        direccion = ?, distrito = ?, trabaja = ?, dependiente = ?, 
-                        apoderado = ?, celular_apoderado = ?, programa = ?, 
-                        usuario = ?, clave = ?
-                    WHERE dni = ?
-                ");
-                
-                $stmt->execute([
-                    $numero, $nombre, $anio_ingreso_formato, $celular,
-                    $email, $email_corporativo, $ie_procedencia,
-                    $direccion, $distrito, $trabaja, $dependiente,
-                    $apoderado, $celular_apoderado, $programa,
-                    $usuario, $clave, $dni
+                if (!$programa_id) {
+                    throw new Exception("Programa de estudio no encontrado: $programa");
+                }
+
+                // Generar credenciales
+                $credenciales = generarCredenciales($nombre, $dni);
+
+                // Verificar existencia del estudiante
+                $stmt_check = $conn->prepare("SELECT id FROM estudiantes WHERE dni = ?");
+                $stmt_check->execute([$dni]);
+                $estudiante_existente = $stmt_check->fetch(PDO::FETCH_ASSOC);
+
+                if ($estudiante_existente) {
+                    // Actualizar estudiante
+                    $stmt = $conn->prepare("
+                        UPDATE estudiantes 
+                        SET numero = ?, nombre = ?, anio_ingreso = ?, celular = ?, 
+                            email = ?, email_corporativo = ?, ie_procedencia = ?, 
+                            direccion = ?, distrito = ?, trabaja = ?, dependiente = ?, 
+                            apoderado = ?, celular_apoderado = ?, programa = ?,
+                            programa_id = ?, usuario = ?, clave = ?,
+                            ultima_actualizacion = CURRENT_TIMESTAMP
+                        WHERE dni = ?
+                    ");
+                    
+                    $stmt->execute([
+                        $numero, $nombre, $anio_ingreso, $celular,
+                        $email, $email_corporativo, $ie_procedencia,
+                        $direccion, $distrito, $trabaja, $dependiente,
+                        $apoderado, $celular_apoderado, $programa,
+                        $programa_id, $credenciales['usuario'], $credenciales['clave'],
+                        $dni
+                    ]);
+                    
+                    $stats['actualizados']++;
+                } else {
+                    // Insertar nuevo estudiante
+                    $stmt = $conn->prepare("
+                        INSERT INTO estudiantes (
+                            numero, nombre, dni, anio_ingreso, celular,
+                            email, email_corporativo, ie_procedencia, direccion, 
+                            distrito, trabaja, dependiente, apoderado, 
+                            celular_apoderado, programa, programa_id,
+                            usuario, clave, ultima_actualizacion
+                        ) VALUES (
+                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                            CURRENT_TIMESTAMP
+                        )
+                    ");
+                    
+                    $stmt->execute([
+                        $numero, $nombre, $dni, $anio_ingreso, $celular,
+                        $email, $email_corporativo, $ie_procedencia, $direccion,
+                        $distrito, $trabaja, $dependiente, $apoderado,
+                        $celular_apoderado, $programa, $programa_id,
+                        $credenciales['usuario'], $credenciales['clave']
+                    ]);
+                    
+                    $stats['nuevos']++;
+                }
+
+                // Generar QR y carnet
+                $qr_data = json_encode([
+                    'dni' => $dni,
+                    'nombre' => $nombre,
+                    'programa' => $programa
                 ]);
                 
-                $id_estudiante = $estudiante_existente['id'];
-                $registros_actualizados++;
-            } else {
-                // Insertar nuevo estudiante
+                $qr_file = "qr_codes/$dni.png";
+                if (!is_dir("qr_codes")) {
+                    mkdir("qr_codes", 0777, true);
+                }
+                
+                QRcode::png($qr_data, $qr_file);
+
+                // Actualizar QR en base de datos
                 $stmt = $conn->prepare("
-                    INSERT INTO estudiantes (numero, nombre, dni, anio_ingreso, celular,
-                        email, email_corporativo, ie_procedencia, direccion, distrito,
-                        trabaja, dependiente, apoderado, celular_apoderado, programa,
-                        usuario, clave)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO qr_codes (dni_estudiante, qr_code_path)
+                    VALUES (?, ?)
+                    ON DUPLICATE KEY UPDATE qr_code_path = VALUES(qr_code_path)
                 ");
-                
-                $stmt->execute([
-                    $numero, $nombre, $dni, $anio_ingreso_formato, $celular,
-                    $email, $email_corporativo, $ie_procedencia, $direccion,
-                    $distrito, $trabaja, $dependiente, $apoderado,
-                    $celular_apoderado, $programa, $usuario, $clave
-                ]);
-                
-                $id_estudiante = $conn->lastInsertId();
-                $registros_nuevos++;
-            }
+                $stmt->execute([$dni, $qr_file]);
 
-            // Generar o actualizar código QR
-            $qr_data = "DNI: $dni, Nombre: $nombre, Programa: $programa";
-            $qr_file = "qr_codes/$dni.png";
-            QRcode::png($qr_data, $qr_file);
-
-            // Actualizar o insertar QR en la base de datos
-            $stmt_qr = $conn->prepare("
-                INSERT INTO qr_codes (dni_estudiante, qr_code_path)
-                VALUES (?, ?)
-                ON DUPLICATE KEY UPDATE qr_code_path = VALUES(qr_code_path)
-            ");
-            $stmt_qr->execute([$dni, $qr_file]);
-
-            // Actualizar o insertar carnet
-            $fecha_emision = date('Y-m-d');
-            $stmt_carnet = $conn->prepare("
-                INSERT INTO carnet (id_estudiante, nombre_completo, programa_estudio, dni, fecha_emision)
-                VALUES (?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE 
-                    nombre_completo = VALUES(nombre_completo),
-                    programa_estudio = VALUES(programa_estudio),
-                    fecha_emision = VALUES(fecha_emision)
-            ");
-            $stmt_carnet->execute([
-                $id_estudiante, $nombre, $programa, $dni, $fecha_emision
-            ]);
-
-            if (!$estudiante_existente) {
-                $carnet_id = $conn->lastInsertId();
-                $stmt_update = $conn->prepare("
-                    UPDATE estudiantes 
-                    SET carnet_id = ? 
-                    WHERE id = ?
+                // Actualizar carnet
+                $stmt = $conn->prepare("
+                    INSERT INTO carnet (id_estudiante, nombre_completo, programa_estudio, dni, fecha_emision)
+                    VALUES ((SELECT id FROM estudiantes WHERE dni = ?), ?, ?, ?, CURRENT_DATE)
+                    ON DUPLICATE KEY UPDATE 
+                        nombre_completo = VALUES(nombre_completo),
+                        programa_estudio = VALUES(programa_estudio),
+                        fecha_emision = CURRENT_DATE
                 ");
-                $stmt_update->execute([$carnet_id, $id_estudiante]);
+                $stmt->execute([$dni, $nombre, $programa, $dni]);
+
+            } catch (Exception $e) {
+                $stats['errores']++;
+                $stats['log'][] = "Error en fila " . ($index + 2) . ": " . $e->getMessage();
+                continue;
             }
         }
 
         $conn->commit();
-        echo "Proceso completado exitosamente. ";
-        echo "Registros nuevos: $registros_nuevos. ";
-        echo "Registros actualizados: $registros_actualizados.";
-        
+
+        // Preparar mensaje de respuesta
+        $mensaje = sprintf(
+            "Proceso completado. Nuevos: %d, Actualizados: %d, Errores: %d",
+            $stats['nuevos'],
+            $stats['actualizados'],
+            $stats['errores']
+        );
+
+        if (!empty($stats['log'])) {
+            $mensaje .= "\n\nLog de errores:\n" . implode("\n", $stats['log']);
+        }
+
+        echo json_encode([
+            'status' => 'success',
+            'mensaje' => $mensaje
+        ]);
+
     } catch (Exception $e) {
-        $conn->rollBack();
-        echo "Error en el proceso: " . $e->getMessage();
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        
+        echo json_encode([
+            'status' => 'error',
+            'mensaje' => "Error general: " . $e->getMessage()
+        ]);
+    } finally {
+        // Limpiar archivo temporal
+        if (file_exists($target_file)) {
+            unlink($target_file);
+        }
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 
