@@ -1,29 +1,18 @@
 <?php
-require_once '../config/db_connect.php';
-require_once '../../public/lib/phpqrcode/qrlib.php';
-
-// Configuración de errores
+// Configuración de errores y charset
+header('Content-Type: text/html; charset=utf-8');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Función para manejar las rutas de los QR
-function getQRPath($qr_code_path) {
-    // Detectar si estamos en Railway o local
-    $isRailway = strpos($_SERVER['HTTP_HOST'], 'railway.app') !== false;
-    
-    if ($isRailway) {
-        // Convertir la ruta local a URL de Railway
-        $baseUrl = 'https://iestp-production.up.railway.app';
-        // Remover '/iestp/public' del path si existe
-        $qr_path = str_replace('/iestp/public/', '', $qr_code_path);
-        return $baseUrl . '/' . $qr_path;
-    } else {
-        // En local, mantener la ruta original
-        return '/iestp/public/' . $qr_code_path;
-    }
-}
-
 try {
+    // Verificar si la conexión está disponible
+    require_once '../config/db_connect.php';
+    
+    if (!isset($conn) || !($conn instanceof PDO)) {
+        throw new Exception("Error de conexión a la base de datos");
+    }
+
+    // Consulta con manejo de errores mejorado
     $sql = "
         SELECT 
             e.*,
@@ -39,29 +28,35 @@ try {
     ";
     
     $stmt = $conn->prepare($sql);
+    
+    if (!$stmt) {
+        throw new Exception("Error en la preparación de la consulta");
+    }
+    
     $stmt->execute();
     
     if ($stmt->rowCount() > 0) {
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            // Manejar la ruta del QR
-            $qr_image_path = !empty($row['qr_code_path']) 
+            // Validar que las claves existan antes de usarlas
+            $qr_image_path = isset($row['qr_code_path']) && !empty($row['qr_code_path'])
                 ? getQRPath($row['qr_code_path'])
                 : 'img/placeholder.png';
             
-            // Formatear la fecha
-            $anio_ingreso = !empty($row['anio_ingreso']) 
+            $anio_ingreso = isset($row['anio_ingreso']) && !empty($row['anio_ingreso'])
                 ? date('Y-m-d', strtotime($row['anio_ingreso']))
                 : '';
 
-            // Sanitizar datos
-            $dni = htmlspecialchars($row['dni']);
-            $nombre = htmlspecialchars($row['nombre']);
+            // Sanitizar datos con isset para prevenir errores
+            $dni = htmlspecialchars($row['dni'] ?? '');
+            $nombre = htmlspecialchars($row['nombre'] ?? '');
             $ie_procedencia = htmlspecialchars($row['ie_procedencia'] ?? '');
-            $programa = htmlspecialchars($row['programa'] ?? $row['nombre_programa'] ?? '');
+            $programa = htmlspecialchars($row['nombre_programa'] ?? $row['programa'] ?? '');
             $celular = htmlspecialchars($row['celular'] ?? '');
-            $usuario = htmlspecialchars($row['usuario']);
-            $clave = htmlspecialchars($row['clave']);
-            
+            $usuario = htmlspecialchars($row['usuario'] ?? '');
+            $clave = htmlspecialchars($row['clave'] ?? '');
+            $id = htmlspecialchars($row['id'] ?? '');
+            $programa_id = htmlspecialchars($row['programa_id'] ?? '');
+
             echo "
             <tr>
                 <td class='text-center'>{$dni}</td>
@@ -93,14 +88,14 @@ try {
                     <button class='btn btn-warning btn-sm edit-student' 
                             data-bs-toggle='modal' 
                             data-bs-target='#editModal'
-                            data-id='" . htmlspecialchars($row['id']) . "'
+                            data-id='{$id}'
                             data-dni='{$dni}'
                             data-nombre='{$nombre}'
                             data-ieprocedencia='{$ie_procedencia}'
                             data-programa='{$programa}'
                             data-anioingreso='{$anio_ingreso}'
                             data-celular='{$celular}'
-                            data-programa-id='" . htmlspecialchars($row['programa_id'] ?? '') . "'>
+                            data-programa-id='{$programa_id}'>
                         <i class='fas fa-edit'></i> Editar
                     </button>
                 </td>
@@ -109,14 +104,29 @@ try {
     } else {
         echo "<tr><td colspan='10' class='text-center'>No se encontraron estudiantes registrados</td></tr>";
     }
-} catch (PDOException $e) {
-    error_log("Error en la consulta: " . $e->getMessage());
+} catch (Exception $e) {
+    // Log detallado del error
+    error_log("Error en fetch_estudiantes.php: " . $e->getMessage());
+    error_log("Trace: " . $e->getTraceAsString());
+    
+    // Respuesta de error para el usuario
     echo "<tr><td colspan='10' class='text-center text-danger'>
-            Ocurrió un error al cargar los datos. Por favor, intente más tarde.
+            Error al cargar los datos: " . htmlspecialchars($e->getMessage()) . "
           </td></tr>";
 }
-?>
 
+// Función para manejar las rutas de los QR
+function getQRPath($qr_code_path) {
+    $isRailway = strpos($_SERVER['HTTP_HOST'] ?? '', 'railway.app') !== false;
+    
+    if ($isRailway) {
+        $baseUrl = 'https://iestp-production.up.railway.app';
+        $qr_path = str_replace('/iestp/public/', '', $qr_code_path);
+        return $baseUrl . '/' . $qr_path;
+    }
+    return '/iestp/public/' . $qr_code_path;
+}
+?>
 <script>
 $(document).ready(function() {
     // Manejo del toggle de contraseña
