@@ -1,105 +1,54 @@
 <?php
-// Clase para manejar la configuración de la base de datos
-class DatabaseConfig {
-    private static function getEnvironmentVariables() {
-        // Priorizar variables de entorno de Railway
-        if (getenv('RAILWAY_ENVIRONMENT') === 'production') {
-            return [
-                'host' => getenv('MYSQLHOST') ?: 'mysql.railway.internal',
-                'port' => getenv('MYSQLPORT') ?: '3306',
-                'database' => getenv('MYSQLDATABASE') ?: 'railway',
-                'user' => getenv('MYSQLUSER') ?: 'root',
-                'password' => getenv('MYSQLPASSWORD') ?: 'UjiJRmWZqlGWPXqsVhQYsGpeFibuUlcq'
-            ];
-        }
-        
-        // Configuración para el proxy público de Railway (desarrollo/pruebas)
-        return [
-            'host' => 'autorack.proxy.rlwy.net',
-            'port' => '16484',
-            'database' => 'railway',
-            'user' => 'root',
-            'password' => 'UjiJRmWZqlGWPXqsVhQYsGpeFibuUlcq'
-        ];
-    }
-
-    public static function getDSN() {
-        $config = self::getEnvironmentVariables();
-        return sprintf(
-            "mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4",
-            $config['host'],
-            $config['port'],
-            $config['database']
-        );
-    }
-
-    public static function getCredentials() {
-        $config = self::getEnvironmentVariables();
-        return [
-            'user' => $config['user'],
-            'password' => $config['password']
-        ];
-    }
-}
-
-// Opciones PDO
-$pdoOptions = [
-    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_EMULATE_PREPARES => false,
-    PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
-];
+// Configuración de la conexión a Railway
+$hostname = "autorack.proxy.rlwy.net";
+$port = "16484";
+$database = "aplicativo";
+$username = "root";
+$password = "UjiJRmWZqlGWPXqsVhQYsGpeFibuUlcq";
 
 try {
-    // Obtener configuración
-    $dsn = DatabaseConfig::getDSN();
-    $credentials = DatabaseConfig::getCredentials();
+    // Creamos el DSN para la conexión
+    $dsn = "mysql:host=$hostname;port=$port;dbname=$database;charset=utf8mb4";
     
-    // Crear conexión
-    $conn = new PDO(
-        $dsn,
-        $credentials['user'],
-        $credentials['password'],
-        $pdoOptions
-    );
+    // Establecemos la conexión con opciones optimizadas
+    $conexion = new PDO($dsn, $username, $password, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false
+    ]);
+    
+    // Si llegamos aquí, la conexión fue exitosa
+    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        exit(0);
+    }
+    
+    // Mensaje simple de conexión exitosa
+    // Comenta esta línea en producción si no quieres ver el mensaje
+    echo "Conexión exitosa a la base de datos aplicativo";
 
-    // Configurar zona horaria
-    $conn->exec("SET time_zone = 'America/Lima'");
+} catch(PDOException $e) {
+    // Log del error para debugging
+    error_log("Error de conexión DB: " . $e->getMessage());
     
-} catch (PDOException $e) {
-    // Log detallado del error
-    error_log(sprintf(
-        "Error de conexión a la base de datos: %s\nTrace: %s",
-        $e->getMessage(),
-        $e->getTraceAsString()
-    ));
-    
-    // Determinar tipo de respuesta basado en el contexto
-    if (php_sapi_name() === 'cli') {
-        // Respuesta para CLI
-        die("Error de conexión a la base de datos: " . $e->getMessage());
-    } elseif (!headers_sent()) {
-        // Respuesta JSON para API
+    // En caso de una petición API, devolvemos JSON
+    if (strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
         header('Content-Type: application/json');
         http_response_code(500);
-        echo json_encode([
-            'error' => 'Error de conexión a la base de datos',
-            'message' => $e->getMessage(),
-            'code' => $e->getCode()
-        ]);
+        echo json_encode(['error' => 'Error de conexión a la base de datos']);
     } else {
-        // Respuesta HTML para navegador
-        echo "<div style='color:red;'>Error de conexión a la base de datos. Por favor, intente más tarde.</div>";
+        // Para peticiones normales, mensaje de error básico
+        http_response_code(500);
+        echo "Error de conexión a la base de datos. Por favor, intente más tarde.";
     }
     exit();
 }
 
-// Función helper para verificar la conexión
-function testDatabaseConnection($conn) {
+// Función de ayuda para verificar la conexión
+function testConexion($conexion) {
     try {
-        $conn->query('SELECT 1');
+        $conexion->query("SELECT 1");
         return true;
-    } catch (PDOException $e) {
+    } catch(PDOException $e) {
         error_log("Error en test de conexión: " . $e->getMessage());
         return false;
     }
