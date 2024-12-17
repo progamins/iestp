@@ -301,7 +301,7 @@ $result = $conn->query($sql);
       // Función para cargar los datos de la tabla con AJAX
       function loadTableData() {
          $.ajax({
-            url: '../app/controllers/fetch_estudiantes.php', // Archivo PHP que retorna los datos
+            url: '../app/Controllers/fetch_estudiantes.php', // Archivo PHP que retorna los datos
             type: 'GET',
             success: function (data) {
                $('#estudiantesTableBody').html(data); // Insertar los datos en el cuerpo de la tabla
@@ -347,7 +347,7 @@ $result = $conn->query($sql);
     $('#saveChanges').click(function() {
         var formData = $('#editForm').serialize();
         $.ajax({
-            url: '../app/controllers/update_estudiante.php',
+            url: '../app/Controllers/update_estudiante.php',
             type: 'POST',
             data: formData,
             success: function(response) {
