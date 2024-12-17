@@ -279,111 +279,158 @@ $result = $conn->query($sql);
    <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.js"></script>
    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
    <script>
-      function confirmDelete(id) {
-         Swal.fire({
-            title: "¿Estás seguro?",
-            text: "¡No podrás revertir esto!",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonColor: "#3085d6",
-            cancelButtonColor: "#d33",
-            confirmButtonText: "Sí, eliminarlo"
-         }).then((result) => {
-            if (result.isConfirmed) {
-               // Redirigir a delete_record.php con el ID del estudiante
-               window.location.href = `delete_record.php?id=${id}`;
-            }
-         });
-      }
-   </script>
-
-   <script>
-      // Función para cargar los datos de la tabla con AJAX
-      function loadTableData() {
-         $.ajax({
-            url: '../app/Controllers/fetch_estudiantes.php', // Archivo PHP que retorna los datos
-            type: 'GET',
-            success: function (data) {
-               $('#estudiantesTableBody').html(data); // Insertar los datos en el cuerpo de la tabla
-            },
-            error: function () {
-               console.log("Error al cargar los datos.");
-            }
-         });
-      }
-
-      // Cargar la tabla al cargar la página
-      $(document).ready(function () {
-         loadTableData(); // Llamada inicial
-
-         // Recargar la tabla cada 10 segundos (10000 ms)
-         setInterval(loadTableData, 10000);
-      });
-
-      
-      $(document).ready(function() {
-    // Manejar la apertura del modal de edición
-    $('#editModal').on('show.bs.modal', function (event) {
-        var button = $(event.relatedTarget);
-        var id = button.data('id');
-        var dni = button.data('dni');
-        var nombre = button.data('nombre');
-        var ieProcedencia = button.data('ieprocedencia');
-        var programa = button.data('programa');
-        var anioIngreso = button.data('anioingreso');
-        var celular = button.data('celular');
-
-        var modal = $(this);
-        modal.find('#editId').val(id);
-        modal.find('#editDni').val(dni);
-        modal.find('#editNombre').val(nombre);
-        modal.find('#editIeProcedencia').val(ieProcedencia);
-        modal.find('#editPrograma').val(programa);
-        modal.find('#editAnioIngreso').val(anioIngreso);
-        modal.find('#editCelular').val(celular);
-    });
-
-    // Manejar el guardado de los cambios
-    $('#saveChanges').click(function() {
-        var formData = $('#editForm').serialize();
-        $.ajax({
-            url: '../app/Controllers/update_estudiante.php',
-            type: 'POST',
-            data: formData,
-            success: function(response) {
-                if(response == 'success') {
-                    $('#editModal').modal('hide');
-                    Swal.fire('¡Éxito!', 'Los datos del estudiante han sido actualizados.', 'success');
-                    loadTableData(); // Recargar los datos de la tabla
-                } else {
-                    Swal.fire('Error', 'Hubo un problema al actualizar los datos.', 'error');
+        // Función para confirmar eliminación
+        function confirmDelete(id) {
+            Swal.fire({
+                title: "¿Estás seguro?",
+                text: "¡No podrás revertir esto!",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Sí, eliminarlo",
+                cancelButtonText: "Cancelar"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '../app/Controllers/delete_record.php',
+                        type: 'POST',
+                        data: { id: id },
+                        success: function(response) {
+                            if(response === 'success') {
+                                Swal.fire(
+                                    '¡Eliminado!',
+                                    'El registro ha sido eliminado.',
+                                    'success'
+                                );
+                                loadTableData();
+                            } else {
+                                Swal.fire(
+                                    'Error',
+                                    'No se pudo eliminar el registro.',
+                                    'error'
+                                );
+                            }
+                        },
+                        error: function() {
+                            Swal.fire(
+                                'Error',
+                                'Hubo un problema con el servidor.',
+                                'error'
+                            );
+                        }
+                    });
                 }
-            },
-            error: function() {
-                Swal.fire('Error', 'Hubo un problema al conectar con el servidor.', 'error');
+            });
+        }
+
+        // Función para cargar datos de la tabla
+        function loadTableData() {
+            $.ajax({
+                url: '../app/Controllers/fetch_estudiantes.php',
+                type: 'GET',
+                beforeSend: function() {
+                    $('#estudiantesTableBody').html('<tr><td colspan="10" class="text-center">Cargando...</td></tr>');
+                },
+                success: function(data) {
+                    $('#estudiantesTableBody').html(data);
+                    // Inicializar tooltips después de cargar los datos
+                    $('[data-bs-toggle="tooltip"]').tooltip();
+                },
+                error: function() {
+                    $('#estudiantesTableBody').html('<tr><td colspan="10" class="text-center text-danger">Error al cargar los datos.</td></tr>');
+                }
+            });
+        }
+
+        // Cargar programas de estudio
+        function loadProgramas() {
+            $.ajax({
+                url: '../app/Controllers/get_programas.php',
+                type: 'GET',
+                success: function(data) {
+                    $('#editPrograma').html(data);
+                }
+            });
+        }
+
+        $(document).ready(function() {
+            // Cargar datos iniciales
+            loadTableData();
+            loadProgramas();
+
+            // Recargar datos cada 30 segundos
+            setInterval(loadTableData, 30000);
+
+            // Manejar apertura del modal
+            $('#editModal').on('show.bs.modal', function(event) {
+                const button = $(event.relatedTarget);
+                const modal = $(this);
+
+                // Llenar el formulario
+                modal.find('#editId').val(button.data('id'));
+                modal.find('#editDni').val(button.data('dni'));
+                modal.find('#editNombre').val(button.data('nombre'));
+                modal.find('#editIeProcedencia').val(button.data('ieprocedencia'));
+                modal.find('#editPrograma').val(button.data('programa-id'));
+                modal.find('#editAnioIngreso').val(button.data('anioingreso'));
+                modal.find('#editCelular').val(button.data('celular'));
+            });
+
+            // Manejar guardado de cambios
+            $('#saveChanges').click(function() {
+                const form = $('#editForm');
+                if (!form[0].checkValidity()) {
+                    form[0].reportValidity();
+                    return;
+                }
+
+                $.ajax({
+                    url: '../app/Controllers/update_estudiante.php',
+                    type: 'POST',
+                    data: form.serialize(),
+                    success: function(response) {
+                        if(response === 'success') {
+                            $('#editModal').modal('hide');
+                            Swal.fire({
+                                title: '¡Éxito!',
+                                text: 'Los datos del estudiante han sido actualizados.',
+                                icon: 'success',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                            loadTableData();
+                        } else {
+                            Swal.fire('Error', 'Hubo un problema al actualizar los datos.', 'error');
+                        }
+                    },
+                    error: function() {
+                        Swal.fire('Error', 'Hubo un problema al conectar con el servidor.', 'error');
+                    }
+                });
+            });
+        });
+
+        // Manejo del menú responsive
+        document.addEventListener('DOMContentLoaded', function() {
+            const menuToggle = document.querySelector('.menu-toggle');
+            const navList = document.querySelector('nav ul');
+
+            if (menuToggle && navList) {
+                menuToggle.addEventListener('click', function() {
+                    navList.classList.toggle('active');
+                });
+
+                document.querySelectorAll('nav ul li a').forEach(link => {
+                    link.addEventListener('click', () => {
+                        if (window.innerWidth <= 991) {
+                            navList.classList.remove('active');
+                        }
+                    });
+                });
             }
         });
-    });
-});
-document.addEventListener('DOMContentLoaded', function() {
-    const menuToggle = document.querySelector('.menu-toggle');
-    const navList = document.querySelector('nav ul');
-
-    menuToggle.addEventListener('click', function() {
-        navList.classList.toggle('active');
-    });
-
-    // Cerrar menú al hacer clic en un enlace (para móviles)
-    const navLinks = document.querySelectorAll('nav ul li a');
-    navLinks.forEach(link => {
-        link.addEventListener('click', () => {
-            if (window.innerWidth <= 991) {
-                navList.classList.remove('active');
-            }
-        });
-    });
-});
-   </script>
+    </script>
 
 </body>
 
